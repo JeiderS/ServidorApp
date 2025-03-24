@@ -35,7 +35,7 @@ async function connecDB() {
 }
 connecDB();
 
-const port = 3000
+const port = process.env.PORT || 4000;
 
 
 
