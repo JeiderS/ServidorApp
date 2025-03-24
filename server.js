@@ -48,6 +48,24 @@ app.get('/productos', async (req, res) => {
       res.status(500).json({ error: error.message });
     }
 });
+
+app.get("/productos/:id", async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const producto = await db.collection("productos").findOne({ _id: new require("mongodb").ObjectId(id) });
+
+    if (!producto) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    
+    res.json(producto);
+  } catch (error) {
+    res.status(500).json({ error: "Error en la búsqueda del producto" });
+  }
+});
+
+
   
 
 // Función para detectar cambios en la base de datos
