@@ -65,28 +65,86 @@ app.get("/productos/:id", async (req, res) => {
   }
 });
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  
+app.post("/crear_pedido", async (req, res) => {
+  try {
+      const pedido = req.body;
+      pedido.fechacreacion = new Date();
 
-// Función para detectar cambios en la base de datos
-function watchCollection() {
-    const collection = db.collection("productos");
-  
-    const changeStream = collection.watch();
-  
-    changeStream.on("change", (change) => {
-      console.log("Cambio detectado en MongoDB:", change);
-      io.emit("productos_actualizados"); // Notifica a los clientes
-    });
+      const result = await db.collection("pedidos").insertOne(pedido);
+      res.status(201).json({ message: "Pedido creado con éxito", pedidoId: result.insertedId });
+  } catch (error) {
+      res.status(500).json({ error: "Error al crear el pedido" });
   }
+});
+
+app.get("/obtener_pedidos", async (req, res) => {
+  try {
+      const pedidos = await db.collection("pedidos").find().toArray();
+      res.json(pedidos);
+  } catch (error) {
+      res.status(500).json({ error: "Error al obtener los pedidos" });
+  }
+});
+
+app.get("/pedidos/:id", async (req, res) => {
+  try {
+      const { id } = req.params;
+      const pedido = await db.collection("pedidos").findOne({ _id: new require("mongodb").ObjectId(id) });
+
+      if (!pedido) {
+          return res.status(404).json({ error: "Pedido no encontrado" });
+      }
+      
+      res.json(pedido);
+  } catch (error) {
+      res.status(500).json({ error: "Error en la búsqueda del pedido" });
+  }
+});
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
   
 
-  // WebSockets: conexión con el frontend
-  io.on("connection", (socket) => {
-    console.log("Cliente conectado");
-    socket.on("disconnect", () => {
-      console.log("Cliente desconectado");
-    });
+function watchProductos() {
+  const collection = db.collection("productos");
+
+  const changeStream = collection.watch();
+
+  changeStream.on("change", (change) => {
+      console.log("Cambio detectado en productos:", change);
+      io.emit("productos_actualizados"); // Notifica a los clientes sobre cambios en productos
   });
+}
+
+function watchPedidos() {
+  const collection = db.collection("pedidos");
+
+  const changeStream = collection.watch();
+
+  changeStream.on("change", (change) => {
+      console.log("Cambio detectado en pedidos:", change);
+      io.emit("pedidos_actualizados"); // Notifica a los clientes sobre cambios en pedidos
+  });
+}
+
+// WebSockets: conexión con el frontend
+io.on("connection", (socket) => {
+  console.log("Cliente conectado");
+
+  socket.on("disconnect", () => {
+      console.log("Cliente desconectado");
+  });
+});
+
+// Llamar a ambas funciones después de conectar la base de datos
+connecDB().then(() => {
+  watchProductos();
+  watchPedidos();
+});
+
 
 app.listen(port, "0.0.0.0", () => console.log(`Servidor corriendo en ${port}`));
